@@ -11,6 +11,9 @@ if config.config_file_name is not None:
 
 # Override sqlalchemy.url from environment
 database_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:54322/postgres")
+# Debug: log which URL is being used (mask password)
+_masked = database_url.split("@")[-1] if "@" in database_url else "no-url"
+print(f"[alembic] Connecting to: ...@{_masked}")
 config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = None
