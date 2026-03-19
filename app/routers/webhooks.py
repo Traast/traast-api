@@ -20,6 +20,7 @@ class RoleActivatedPayload(BaseModel):
     Supabase sends: { type, table, schema, record, old_record }
     We extract role_id and tenant_id from the record.
     """
+
     type: str  # "UPDATE"
     table: str  # "role_profiles"
     db_schema: str = Field(alias="schema")  # "public"
@@ -110,6 +111,8 @@ def role_activated(request: Request, payload: RoleActivatedPayload):
         )
 
     job_id = str(row[0])
-    logger.info("retrieval_job_created", job_id=job_id, role_id=role_id, tenant_id=tenant_id)
+    logger.info(
+        "retrieval_job_created", job_id=job_id, role_id=role_id, tenant_id=tenant_id
+    )
 
     return RetrievalJobResponse(job_id=job_id, role_id=str(role_id), status="pending")

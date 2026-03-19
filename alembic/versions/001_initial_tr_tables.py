@@ -16,6 +16,7 @@ Indexes:
 - Partial indexes on tr_retrieval_jobs for worker poll and reaper queries
 - Analytics indexes on tr_ai_usage
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -36,21 +37,37 @@ def upgrade() -> None:
 
     op.create_table(
         "tr_coresignal_profiles",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("coresignal_id", sa.BigInteger, nullable=False, unique=True),
         sa.Column("linkedin_url", sa.Text),
         sa.Column("full_name", sa.Text),
         sa.Column("raw_data", JSONB),
         sa.Column("fetched_at", sa.DateTime(timezone=True)),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
     )
 
     op.create_table(
         "tr_candidates",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("coresignal_id", sa.BigInteger, unique=True),
-        sa.Column("profile_id", UUID(as_uuid=True), sa.ForeignKey("tr_coresignal_profiles.id")),
+        sa.Column(
+            "profile_id", UUID(as_uuid=True), sa.ForeignKey("tr_coresignal_profiles.id")
+        ),
         # identity
         sa.Column("full_name", sa.Text),
         sa.Column("first_name", sa.Text),
@@ -84,23 +101,43 @@ def upgrade() -> None:
         sa.Column("projected_salary_median", sa.Numeric),
         sa.Column("projected_salary_currency", sa.Text),
         # metadata
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
     )
 
     op.create_table(
         "tr_role_candidates",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("role_id", UUID(as_uuid=True), nullable=False),
         # NOTE: role_id references role_profiles.id (skipy-mvp) for now.
         #       Will reference tr_roles.id when traast-api owns roles.
         #       See ADR-003 for FK migration plan.
-        sa.Column("candidate_id", UUID(as_uuid=True), sa.ForeignKey("tr_candidates.id"), nullable=False),
+        sa.Column(
+            "candidate_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("tr_candidates.id"),
+            nullable=False,
+        ),
         sa.Column("stage", sa.Text, server_default="prospect"),
         # stage values: prospect | contacted | screening | interview | hired | rejected
-        sa.Column("added_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
-        sa.UniqueConstraint("role_id", "candidate_id", name="uq_tr_role_candidates_role_candidate"),
+        sa.Column(
+            "added_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
+        sa.UniqueConstraint(
+            "role_id", "candidate_id", name="uq_tr_role_candidates_role_candidate"
+        ),
     )
 
     # ─────────────────────────────────────────────
@@ -109,7 +146,12 @@ def upgrade() -> None:
 
     op.create_table(
         "tr_retrieval_jobs",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("role_id", UUID(as_uuid=True), nullable=False),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("status", sa.Text, nullable=False, server_default="pending"),
@@ -121,7 +163,9 @@ def upgrade() -> None:
         sa.Column("error", sa.Text),
         sa.Column("started_at", sa.DateTime(timezone=True)),
         sa.Column("completed_at", sa.DateTime(timezone=True)),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
         # NOTE: no table-wide UNIQUE(role_id) — multiple jobs per role allowed
         #       (completed, failed = historical; re-fetch creates new jobs)
         #       Concurrency guard is a partial unique index (see below)
@@ -133,7 +177,12 @@ def upgrade() -> None:
 
     op.create_table(
         "tr_ai_usage",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("operation_type", sa.Text, nullable=False),
         # operation_type values:
@@ -155,7 +204,9 @@ def upgrade() -> None:
         sa.Column("duration_ms", sa.Integer),
         # details
         sa.Column("metadata", JSONB),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")
+        ),
     )
 
     # ─────────────────────────────────────────────
@@ -163,9 +214,15 @@ def upgrade() -> None:
     # ─────────────────────────────────────────────
 
     # tr_candidates: matching engine queries inside JSONB columns
-    op.execute("CREATE INDEX idx_tr_candidates_experience ON tr_candidates USING GIN (experience)")
-    op.execute("CREATE INDEX idx_tr_candidates_education ON tr_candidates USING GIN (education)")
-    op.execute("CREATE INDEX idx_tr_candidates_skills ON tr_candidates USING GIN (inferred_skills)")
+    op.execute(
+        "CREATE INDEX idx_tr_candidates_experience ON tr_candidates USING GIN (experience)"
+    )
+    op.execute(
+        "CREATE INDEX idx_tr_candidates_education ON tr_candidates USING GIN (education)"
+    )
+    op.execute(
+        "CREATE INDEX idx_tr_candidates_skills ON tr_candidates USING GIN (inferred_skills)"
+    )
 
     # tr_retrieval_jobs: one active job per role (partial unique index)
     # Allows unlimited historical rows (completed, failed) while preventing
@@ -192,7 +249,9 @@ def upgrade() -> None:
     """)
 
     # tr_ai_usage: analytics queries by tenant, role, and time
-    op.execute("CREATE INDEX idx_tr_ai_usage_tenant_role ON tr_ai_usage (tenant_id, role_id)")
+    op.execute(
+        "CREATE INDEX idx_tr_ai_usage_tenant_role ON tr_ai_usage (tenant_id, role_id)"
+    )
     op.execute("CREATE INDEX idx_tr_ai_usage_job ON tr_ai_usage (job_id)")
     op.execute("CREATE INDEX idx_tr_ai_usage_created ON tr_ai_usage (created_at DESC)")
 

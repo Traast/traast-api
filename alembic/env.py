@@ -10,7 +10,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Override sqlalchemy.url from environment
-database_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:54322/postgres")
+database_url = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@localhost:54322/postgres"
+)
 config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = None
