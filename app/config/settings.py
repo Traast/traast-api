@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     coresignal_api_key: str = ""
     stripe_secret_key: str = ""
 
+    # Webhooks
+    supabase_webhook_secret: str = ""
+
     # Optional
     slack_alert_webhook_url: str | None = None
 
@@ -27,4 +30,4 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]  # populated from env vars

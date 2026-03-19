@@ -22,4 +22,6 @@ async def ready():
         return {"status": "ok"}
     except Exception as e:
         logger.error("Readiness check failed", error=str(e))
-        return JSONResponse(status_code=503, content={"status": "unavailable", "error": str(e)})
+        return JSONResponse(
+            status_code=503, content={"status": "unavailable", "error": str(e)}
+        )
