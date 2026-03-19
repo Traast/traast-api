@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
