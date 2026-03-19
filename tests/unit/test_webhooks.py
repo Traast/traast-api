@@ -111,6 +111,19 @@ def test_webhook_secret_rejected(mock_settings):
     assert response.status_code == 401
 
 
+@patch("app.routers.webhooks.settings")
+def test_invalid_uuid_role_id_returns_422(mock_settings):
+    mock_settings.supabase_webhook_secret = ""
+
+    response = client.post(
+        "/webhooks/role-activated",
+        json=_make_payload(role_id="not-a-uuid"),
+    )
+
+    assert response.status_code == 422
+    assert "valid UUIDs" in response.json()["detail"]
+
+
 @patch("app.routers.webhooks.get_engine")
 @patch("app.routers.webhooks.settings")
 def test_webhook_secret_accepted(mock_settings, mock_get_engine):

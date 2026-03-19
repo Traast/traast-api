@@ -1,3 +1,6 @@
+import hmac
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -31,7 +34,7 @@ class RetrievalJobResponse(BaseModel):
 
 
 @router.post("/role-activated", status_code=status.HTTP_201_CREATED)
-async def role_activated(request: Request, payload: RoleActivatedPayload):
+def role_activated(request: Request, payload: RoleActivatedPayload):
     """Handle Supabase DB Webhook when a role is activated (ready = true).
 
     Idempotent: uses the partial unique index on tr_retrieval_jobs(role_id)
@@ -42,7 +45,7 @@ async def role_activated(request: Request, payload: RoleActivatedPayload):
     webhook_secret = settings.supabase_webhook_secret
     if webhook_secret:
         provided_secret = request.headers.get("x-webhook-secret", "")
-        if provided_secret != webhook_secret:
+        if not hmac.compare_digest(provided_secret, webhook_secret):
             logger.warning("webhook_auth_failed", path="/webhooks/role-activated")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -58,6 +61,15 @@ async def role_activated(request: Request, payload: RoleActivatedPayload):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Missing role_id (record.id) or tenant_id (record.user_id)",
+        )
+
+    try:
+        UUID(str(role_id))
+        UUID(str(tenant_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="role_id and tenant_id must be valid UUIDs",
         )
 
     # Only process activations (ready = true), ignore deactivations
@@ -86,9 +98,8 @@ async def role_activated(request: Request, payload: RoleActivatedPayload):
             """),
             {"role_id": role_id, "tenant_id": tenant_id},
         )
-        conn.commit()
-
         row = result.fetchone()
+        conn.commit()
 
     if row is None:
         # ON CONFLICT fired — a job is already pending or running
