@@ -35,7 +35,7 @@ def _decode_token(token: str) -> dict:
 
     return jwt.decode(
         token,
-        public_keys[kid],
+        public_keys[kid],  # type: ignore[arg-type]  # RSAPublicKey from JWKS
         algorithms=["RS256"],
         audience="authenticated",
     )
