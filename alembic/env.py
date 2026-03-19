@@ -10,10 +10,13 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Override sqlalchemy.url from environment
+# Debug: dump all DATABASE-related env vars
+import sys
+_db_vars = {k: v for k, v in os.environ.items() if "DATABASE" in k.upper() or "DB" in k.upper()}
+print(f"[alembic] DB env vars found: {list(_db_vars.keys())}", file=sys.stderr, flush=True)
 database_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:54322/postgres")
-# Debug: log which URL is being used (mask password)
 _masked = database_url.split("@")[-1] if "@" in database_url else "no-url"
-print(f"[alembic] Connecting to: ...@{_masked}")
+print(f"[alembic] Connecting to: ...@{_masked}", file=sys.stderr, flush=True)
 config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = None
