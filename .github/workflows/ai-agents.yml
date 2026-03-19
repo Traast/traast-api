@@ -1,0 +1,12 @@
+name: AI Agent Router
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  ai-agents:
+    uses: Traast/traast/.github/workflows/ai-agents-reusable.yml@main
+    secrets: inherit

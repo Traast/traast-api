@@ -1,0 +1,10 @@
+name: Add Issue to Project Traast
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-to-project:
+    uses: Traast/traast/.github/workflows/add-to-project.yml@main
+    secrets: inherit
