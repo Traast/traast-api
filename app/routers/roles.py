@@ -60,6 +60,13 @@ def get_retrieval_status(
     user: dict = Depends(get_current_user),
 ) -> RetrievalStatusResponse:
     """Get the latest retrieval job status for a role."""
+    tenant_id = user.get("sub")
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing sub claim",
+        )
+
     engine = get_engine()
     with engine.connect() as conn:
         row = conn.execute(
@@ -67,11 +74,11 @@ def get_retrieval_status(
                 SELECT status, result_count, new_count, existing_count,
                        error, created_at, started_at, completed_at
                 FROM tr_retrieval_jobs
-                WHERE role_id = :role_id
+                WHERE role_id = :role_id AND tenant_id = :tenant_id
                 ORDER BY created_at DESC
                 LIMIT 1
             """),
-            {"role_id": str(role_id)},
+            {"role_id": str(role_id), "tenant_id": tenant_id},
         ).fetchone()
 
     if row is None:
@@ -104,8 +111,31 @@ def get_candidates(
     offset: int = Query(default=0, ge=0),
 ) -> CandidatePoolResponse:
     """Get the candidate pool for a role from tr_role_candidates + tr_candidates."""
+    tenant_id = user.get("sub")
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing sub claim",
+        )
+
     engine = get_engine()
     with engine.connect() as conn:
+        # Verify tenant owns this role via tr_retrieval_jobs
+        ownership = conn.execute(
+            text("""
+                SELECT 1 FROM tr_retrieval_jobs
+                WHERE role_id = :role_id AND tenant_id = :tenant_id
+                LIMIT 1
+            """),
+            {"role_id": str(role_id), "tenant_id": tenant_id},
+        ).fetchone()
+
+        if ownership is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No retrieval data found for role {role_id}",
+            )
+
         count_row = conn.execute(
             text("""
                 SELECT COUNT(*)

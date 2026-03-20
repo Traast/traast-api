@@ -133,6 +133,7 @@ def test_retrieval_status_invalid_uuid():
 def test_candidates_returns_pool(mock_get_engine):
     mock_get_engine.return_value = _mock_engine_multi_queries(
         [
+            {"fetchone": (1,)},  # ownership check
             {"fetchone": (3,)},
             {
                 "fetchall": [
@@ -189,6 +190,7 @@ def test_candidates_returns_pool(mock_get_engine):
 def test_candidates_empty_pool(mock_get_engine):
     mock_get_engine.return_value = _mock_engine_multi_queries(
         [
+            {"fetchone": (1,)},  # ownership check
             {"fetchone": (0,)},
             {"fetchall": []},
         ]
@@ -206,6 +208,7 @@ def test_candidates_empty_pool(mock_get_engine):
 def test_candidates_pagination(mock_get_engine):
     mock_get_engine.return_value = _mock_engine_multi_queries(
         [
+            {"fetchone": (1,)},  # ownership check
             {"fetchone": (50,)},
             {"fetchall": []},
         ]
@@ -267,3 +270,30 @@ def test_retry_conflict_active_job(mock_get_engine):
 
     assert response.status_code == 409
     assert "already active" in response.json()["detail"]
+
+
+# ── Tenant isolation ─────────────────────────────────────────────
+
+
+@patch("app.routers.roles.get_engine")
+def test_retrieval_status_tenant_isolation(mock_get_engine):
+    """Retrieval status returns 404 when tenant_id doesn't match (no rows returned)."""
+    mock_get_engine.return_value = _mock_engine_with_rows(rows=None, fetchone=None)
+
+    response = client.get(f"/roles/{ROLE_ID}/retrieval-status", headers=AUTH_HEADER)
+
+    assert response.status_code == 404
+
+
+@patch("app.routers.roles.get_engine")
+def test_candidates_tenant_isolation(mock_get_engine):
+    """Candidates returns 404 when tenant doesn't own the role."""
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": None},  # ownership check fails
+        ]
+    )
+
+    response = client.get(f"/roles/{ROLE_ID}/candidates", headers=AUTH_HEADER)
+
+    assert response.status_code == 404
