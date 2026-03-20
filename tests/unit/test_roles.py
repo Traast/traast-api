@@ -131,25 +131,45 @@ def test_retrieval_status_invalid_uuid():
 
 @patch("app.routers.roles.get_engine")
 def test_candidates_returns_pool(mock_get_engine):
-    mock_get_engine.return_value = _mock_engine_multi_queries([
-        {"fetchone": (3,)},
-        {
-            "fetchall": [
-                (
-                    CANDIDATE_ID, "Jane Doe", "Senior Engineer", "Acme Corp",
-                    "San Francisco, CA", 60, ["Python", "FastAPI", "PostgreSQL", "React"],
-                    "prospect",
-                ),
-                (
-                    str(uuid4()), "John Smith", "Tech Lead", "BigCo",
-                    "New York, NY", 120, ["Java", "Spring"], "prospect",
-                ),
-                (
-                    str(uuid4()), None, None, None, None, None, None, "prospect",
-                ),
-            ]
-        },
-    ])
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": (3,)},
+            {
+                "fetchall": [
+                    (
+                        CANDIDATE_ID,
+                        "Jane Doe",
+                        "Senior Engineer",
+                        "Acme Corp",
+                        "San Francisco, CA",
+                        60,
+                        ["Python", "FastAPI", "PostgreSQL", "React"],
+                        "prospect",
+                    ),
+                    (
+                        str(uuid4()),
+                        "John Smith",
+                        "Tech Lead",
+                        "BigCo",
+                        "New York, NY",
+                        120,
+                        ["Java", "Spring"],
+                        "prospect",
+                    ),
+                    (
+                        str(uuid4()),
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        "prospect",
+                    ),
+                ]
+            },
+        ]
+    )
 
     response = client.get(f"/roles/{ROLE_ID}/candidates", headers=AUTH_HEADER)
 
@@ -167,10 +187,12 @@ def test_candidates_returns_pool(mock_get_engine):
 
 @patch("app.routers.roles.get_engine")
 def test_candidates_empty_pool(mock_get_engine):
-    mock_get_engine.return_value = _mock_engine_multi_queries([
-        {"fetchone": (0,)},
-        {"fetchall": []},
-    ])
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": (0,)},
+            {"fetchall": []},
+        ]
+    )
 
     response = client.get(f"/roles/{ROLE_ID}/candidates", headers=AUTH_HEADER)
 
@@ -182,10 +204,12 @@ def test_candidates_empty_pool(mock_get_engine):
 
 @patch("app.routers.roles.get_engine")
 def test_candidates_pagination(mock_get_engine):
-    mock_get_engine.return_value = _mock_engine_multi_queries([
-        {"fetchone": (50,)},
-        {"fetchall": []},
-    ])
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": (50,)},
+            {"fetchall": []},
+        ]
+    )
 
     response = client.get(
         f"/roles/{ROLE_ID}/candidates?limit=10&offset=20", headers=AUTH_HEADER
@@ -200,10 +224,12 @@ def test_candidates_pagination(mock_get_engine):
 
 @patch("app.routers.roles.get_engine")
 def test_retry_creates_job(mock_get_engine):
-    mock_get_engine.return_value = _mock_engine_multi_queries([
-        {"fetchone": None},
-        {"fetchone": (JOB_ID, "pending")},
-    ])
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": None},
+            {"fetchone": (JOB_ID, "pending")},
+        ]
+    )
 
     response = client.post(f"/roles/{ROLE_ID}/retrieval/retry", headers=AUTH_HEADER)
 
@@ -216,9 +242,11 @@ def test_retry_creates_job(mock_get_engine):
 @patch("app.routers.roles.get_engine")
 def test_retry_rate_limited(mock_get_engine):
     now = datetime.now(timezone.utc)
-    mock_get_engine.return_value = _mock_engine_multi_queries([
-        {"fetchone": (str(uuid4()), now)},
-    ])
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": (str(uuid4()), now)},
+        ]
+    )
 
     response = client.post(f"/roles/{ROLE_ID}/retrieval/retry", headers=AUTH_HEADER)
 
@@ -228,10 +256,12 @@ def test_retry_rate_limited(mock_get_engine):
 
 @patch("app.routers.roles.get_engine")
 def test_retry_conflict_active_job(mock_get_engine):
-    mock_get_engine.return_value = _mock_engine_multi_queries([
-        {"fetchone": None},
-        {"fetchone": None},
-    ])
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": None},
+            {"fetchone": None},
+        ]
+    )
 
     response = client.post(f"/roles/{ROLE_ID}/retrieval/retry", headers=AUTH_HEADER)
 
