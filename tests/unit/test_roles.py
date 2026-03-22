@@ -364,7 +364,9 @@ def test_activate_role_tenant_mismatch(mock_get_engine):
     """Activating a role owned by another tenant returns 403."""
     mock_get_engine.return_value = _mock_engine_multi_queries(
         [
-            {"fetchone": (ROLE_ID, False, OTHER_TENANT_ID)},  # role owned by other tenant
+            {
+                "fetchone": (ROLE_ID, False, OTHER_TENANT_ID)
+            },  # role owned by other tenant
         ]
     )
 
