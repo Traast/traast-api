@@ -51,6 +51,13 @@ class RetryResponse(BaseModel):
     status: str
 
 
+class RoleActivationResponse(BaseModel):
+    role_id: str
+    ready: bool
+    retrieval_job_id: str | None = None
+    retrieval_status: str | None = None  # pending | running | completed | failed
+
+
 # ── Endpoints ────────────────────────────────────────────────────
 
 
@@ -249,3 +256,83 @@ def retry_retrieval(
     logger.info("retrieval_retry_created", job_id=job_id, role_id=str(role_id))
 
     return RetryResponse(job_id=job_id, role_id=str(role_id), status="pending")
+
+
+@router.post("/{role_id}/activate")
+def activate_role(
+    role_id: UUID,
+    user: dict = Depends(get_current_user),
+) -> RoleActivationResponse:
+    """Activate a role by setting ready = true.
+
+    The DB trigger (trg_role_activated) automatically creates a retrieval job.
+    Idempotent: calling on an already-active role returns 200 with current state.
+    """
+    tenant_id = user.get("sub")
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing sub claim",
+        )
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        # Verify role exists and check ownership
+        role = conn.execute(
+            text("""
+                SELECT id, ready, user_id
+                FROM role_profiles
+                WHERE id = :role_id
+            """),
+            {"role_id": str(role_id)},
+        ).fetchone()
+
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Role {role_id} not found",
+            )
+
+        # Tenant isolation: verify caller owns this role
+        if str(role[2]) != tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to activate this role",
+            )
+
+        already_active = role[1]  # ready column
+
+        if not already_active:
+            conn.execute(
+                text("""
+                    UPDATE role_profiles SET ready = true WHERE id = :role_id
+                """),
+                {"role_id": str(role_id)},
+            )
+            conn.commit()
+
+        # Query retrieval job (created by DB trigger or from prior activation)
+        job = conn.execute(
+            text("""
+                SELECT id, status
+                FROM tr_retrieval_jobs
+                WHERE role_id = :role_id
+                ORDER BY created_at DESC
+                LIMIT 1
+            """),
+            {"role_id": str(role_id)},
+        ).fetchone()
+
+    logger.info(
+        "role_activated",
+        role_id=str(role_id),
+        already_active=already_active,
+        job_id=str(job[0]) if job else None,
+    )
+
+    return RoleActivationResponse(
+        role_id=str(role_id),
+        ready=True,
+        retrieval_job_id=str(job[0]) if job else None,
+        retrieval_status=job[1] if job else None,
+    )

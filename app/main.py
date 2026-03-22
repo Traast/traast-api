@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 import structlog
 
 from app.config.settings import settings
-from app.routers import health, roles, webhooks
+from app.routers import health, roles
 
 structlog.configure(
     processors=[
@@ -38,7 +38,6 @@ app = FastAPI(
 
 app.include_router(health.router)
 app.include_router(roles.router)
-app.include_router(webhooks.router)
 
 
 @app.middleware("http")
