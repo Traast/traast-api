@@ -297,3 +297,80 @@ def test_candidates_tenant_isolation(mock_get_engine):
     response = client.get(f"/roles/{ROLE_ID}/candidates", headers=AUTH_HEADER)
 
     assert response.status_code == 404
+
+
+# ── POST /roles/{role_id}/activate ───────────────────────────────
+
+OTHER_TENANT_ID = str(uuid4())
+
+
+@patch("app.routers.roles.get_engine")
+def test_activate_role_success(mock_get_engine):
+    """Activating a role sets ready=true and returns retrieval job info."""
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": (ROLE_ID, False, TENANT_ID)},  # role lookup: not yet active
+            {"fetchone": None},  # UPDATE result (no RETURNING)
+            {"fetchone": (JOB_ID, "pending")},  # retrieval job query
+        ]
+    )
+
+    response = client.post(f"/roles/{ROLE_ID}/activate", headers=AUTH_HEADER)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["role_id"] == ROLE_ID
+    assert data["ready"] is True
+    assert data["retrieval_job_id"] == JOB_ID
+    assert data["retrieval_status"] == "pending"
+
+
+@patch("app.routers.roles.get_engine")
+def test_activate_role_already_active(mock_get_engine):
+    """Activating an already-active role is idempotent — returns 200."""
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": (ROLE_ID, True, TENANT_ID)},  # role lookup: already active
+            {"fetchone": (JOB_ID, "completed")},  # retrieval job query (skip UPDATE)
+        ]
+    )
+
+    response = client.post(f"/roles/{ROLE_ID}/activate", headers=AUTH_HEADER)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ready"] is True
+    assert data["retrieval_job_id"] == JOB_ID
+    assert data["retrieval_status"] == "completed"
+
+
+@patch("app.routers.roles.get_engine")
+def test_activate_role_not_found(mock_get_engine):
+    """Activating a nonexistent role returns 404."""
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {"fetchone": None},  # role lookup: not found
+        ]
+    )
+
+    response = client.post(f"/roles/{ROLE_ID}/activate", headers=AUTH_HEADER)
+
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"]
+
+
+@patch("app.routers.roles.get_engine")
+def test_activate_role_tenant_mismatch(mock_get_engine):
+    """Activating a role owned by another tenant returns 403."""
+    mock_get_engine.return_value = _mock_engine_multi_queries(
+        [
+            {
+                "fetchone": (ROLE_ID, False, OTHER_TENANT_ID)
+            },  # role owned by other tenant
+        ]
+    )
+
+    response = client.post(f"/roles/{ROLE_ID}/activate", headers=AUTH_HEADER)
+
+    assert response.status_code == 403
+    assert "Not authorized" in response.json()["detail"]
